@@ -1,0 +1,1 @@
+{"message":"Datos inválidos","errors":[{"code":"invalid_type","expected":"string","received":"undefined","path":["email"],"message":"Required"},{"code":"invalid_type","expected":"string","received":"undefined","path":["password"],"message":"Required"}]}

@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum para roles predefinidos
+enum RoleName {
+  ADMIN
+  GERENTE
+  EMPLEADO
+  AUDITOR
+}
+
+// Enum para tipo de MFA
+enum MFAType {
+  TOTP
+  EMAIL
+}
+
+// Tiendas
+model Store {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  products  Product[]
+}
+
+// Usuarios
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  fullName      String
+  storeId       String?
+  mfaSecret     String?
+  mfaEnabled    Boolean  @default(false)
+  mfaType       MFAType?
+  mfaCode       String?
+  mfaCodeExpiry DateTime?
+  mfaAttempts   Int      @default(0)
+  isBlocked     Boolean  @default(false)
+  failedAttempts Int     @default(0)
+  lastAttempt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store?     @relation(fields: [storeId], references: [id])
+  userRoles     UserRole[] @relation("UserRoles")
+  assignedRoles UserRole[] @relation("UserRoleAssigner")
+  products      Product[]  @relation("ProductCreator")
+  logs          AuditLog[]
+}
+
+// Roles
+model Role {
+  id          String   @id @default(uuid())
+  name        RoleName @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles   UserRole[]
+}
+
+// Relación usuario-rol
+model UserRole {
+  id          String   @id @default(uuid())
+  userId      String
+  roleId      String
+  assignedById String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy  User?    @relation("UserRoleAssigner", fields: [assignedById], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+// Productos
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  category    String
+  storeId     String
+  isPremium   Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store       Store    @relation(fields: [storeId], references: [id])
+  createdBy   User     @relation("ProductCreator", fields: [createdById], references: [id])
+}
+
+// Logs de auditoría
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
